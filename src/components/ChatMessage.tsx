@@ -1,6 +1,5 @@
-
 import { cn } from "@/lib/utils";
-import { ArrowDown, Check, Tshirt, User } from "lucide-react";
+import { ArrowDown, Check, Shirt, User } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export type MessageType = "user" | "bot" | "recommendation";
@@ -62,7 +61,7 @@ const ChatMessage = ({ content, type, recommendation, timestamp = new Date() }: 
           {isUser ? (
             <User size={16} className="text-white" />
           ) : (
-            <Tshirt size={16} className="text-fitbud-primary" />
+            <Shirt size={16} className="text-fitbud-primary" />
           )}
         </div>
 

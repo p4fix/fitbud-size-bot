@@ -1,13 +1,13 @@
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle, Ruler, ShoppingBag, Tshirt } from "lucide-react";
+import { ArrowRight, CheckCircle, Ruler, ShoppingBag, Shirt } from "lucide-react";
 
 const WelcomeHero = ({ onGetStarted }: { onGetStarted: () => void }) => {
   return (
     <div className="text-center py-8 md:py-16 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="bg-fitbud-primary rounded-full p-3 inline-flex items-center justify-center text-white mb-4">
-          <Tshirt size={36} />
+          <Shirt size={36} />
         </div>
         
         <h1 className="text-3xl md:text-5xl font-bold text-fitbud-dark mb-4">
