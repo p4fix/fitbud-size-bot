@@ -33,6 +33,19 @@ export default {
         },
         border: {
           DEFAULT: '#E0E0E0' // Light Gray Border
+        },
+        foreground: '#000000', // Adding foreground color directly
+        primary: {
+          DEFAULT: '#000000',
+          foreground: '#FFFFFF'
+        },
+        secondary: {
+          DEFAULT: '#333333',
+          foreground: '#FFFFFF'
+        },
+        muted: {
+          DEFAULT: '#F5F5F5',
+          foreground: '#666666'
         }
       },
       borderRadius: {
@@ -47,4 +60,3 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-
