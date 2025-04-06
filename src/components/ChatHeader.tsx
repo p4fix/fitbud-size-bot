@@ -1,11 +1,12 @@
-import { Shirt } from "lucide-react";
+
+import React from 'react';
 
 const ChatHeader = () => {
   return (
     <header className="flex items-center justify-between p-4 border-b bg-white shadow-sm z-10">
       <div className="flex items-center gap-2">
-        <div className="bg-fitbud-primary rounded-full p-2 text-white">
-          <Shirt size={24} />
+        <div className="bg-fitbud-primary rounded-full p-2 text-white flex items-center justify-center">
+          <span className="text-lg font-bold">F</span>
         </div>
         <div>
           <h1 className="font-bold text-lg text-fitbud-dark">FitBud</h1>
