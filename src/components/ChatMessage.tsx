@@ -1,7 +1,7 @@
-
 import { cn } from "@/lib/utils";
 import { ArrowDown, Check, User } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export type MessageType = "user" | "bot" | "recommendation";
 
@@ -62,7 +62,14 @@ const ChatMessage = ({ content, type, recommendation, timestamp = new Date() }: 
           {isUser ? (
             <User size={16} className="text-white" />
           ) : (
-            <span className="text-xs font-bold text-fitbud-primary">F</span>
+            <Avatar className="w-full h-full">
+              <AvatarImage 
+                src="/lovable-uploads/c98001f0-b32f-4dd3-ab33-e8034d876077.png" 
+                alt="FitBud Logo" 
+                className="object-contain"
+              />
+              <AvatarFallback>FB</AvatarFallback>
+            </Avatar>
           )}
         </div>
 

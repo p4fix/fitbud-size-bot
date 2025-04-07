@@ -1,13 +1,21 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Ruler, ShoppingBag } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const WelcomeHero = ({ onGetStarted }: { onGetStarted: () => void }) => {
   return (
     <div className="text-center py-8 md:py-16 px-4">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-fitbud-primary rounded-full p-3 inline-flex items-center justify-center text-white mb-4">
-          <span className="text-2xl font-bold">F</span>
+        <div className="inline-flex items-center justify-center mb-4">
+          <Avatar className="w-16 h-16">
+            <AvatarImage 
+              src="/lovable-uploads/c98001f0-b32f-4dd3-ab33-e8034d876077.png" 
+              alt="FitBud Logo" 
+              className="object-contain"
+            />
+            <AvatarFallback>FB</AvatarFallback>
+          </Avatar>
         </div>
         
         <h1 className="text-3xl md:text-5xl font-bold text-fitbud-dark mb-4">
