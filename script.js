@@ -1,4 +1,3 @@
-
 // Application State
 const state = {
     currentScreen: 'welcome',
@@ -36,6 +35,31 @@ const initialBotMessage = {
     content: "Hi there! I'm your FitBud SmartSize Advisor. I can help you find the perfect clothing size based on your measurements and preferences. What are you shopping for today?",
     type: 'bot',
     timestamp: new Date()
+};
+
+// Clothing database simulation
+const clothingDatabase = {
+    jeans: {
+        brands: [
+            { name: "Levi's", sizes: ['28x30', '30x32', '32x32', '34x34'] },
+            { name: 'TrendyFit', sizes: ['S', 'M', 'L', 'XL'] },
+            { name: 'DenimCo', sizes: ['2', '4', '6', '8', '10'] }
+        ]
+    },
+    shirts: {
+        brands: [
+            { name: 'ComfortWear', sizes: ['XS', 'S', 'M', 'L', 'XL'] },
+            { name: 'StylePlus', sizes: ['S', 'M', 'L'] },
+            { name: 'FitFashion', sizes: ['36', '38', '40', '42'] }
+        ]
+    },
+    dresses: {
+        brands: [
+            { name: 'ElegantWear', sizes: ['XS', 'S', 'M', 'L'] },
+            { name: 'ChicStyle', sizes: ['2', '4', '6', '8'] },
+            { name: 'ModernFit', sizes: ['S', 'M', 'L'] }
+        ]
+    }
 };
 
 // Initialize the application
@@ -188,82 +212,136 @@ function hideTypingIndicator() {
 }
 
 function processUserMessage(content) {
-    let botResponse = {
-        content: "I can help you find the right size for any clothing item. Just tell me what specific item you're looking for, like 'jeans from Levi's' or 'Nike running shoes', and I'll provide a personalized size recommendation based on your profile.",
-        type: 'bot',
-        timestamp: new Date()
-    };
-    
-    // Simple keyword-based responses
     const lowerContent = content.toLowerCase();
+    let response = null;
     
-    if (lowerContent.includes('jeans') || lowerContent.includes('pants')) {
-        botResponse = {
-            content: "I've analyzed your profile and found a great recommendation for jeans.",
-            type: 'bot',
-            timestamp: new Date()
-        };
-        
-        // Hide typing indicator and add the initial response
-        hideTypingIndicator();
-        addMessage(botResponse);
-        
-        // Show typing again for a recommendation
-        showTypingIndicator();
-        
-        // Add product recommendation after a short delay
-        setTimeout(() => {
-            hideTypingIndicator();
-            
-            addMessage({
-                type: 'recommendation',
-                recommendation: {
-                    item: "Classic Straight Jeans",
-                    brand: "TrendyFit",
-                    recommendedSize: "32W x 30L",
-                    confidence: "high"
-                },
-                timestamp: new Date()
-            });
-        }, 1000);
-        
-        return;
-    } else if (lowerContent.includes('shirt') || lowerContent.includes('t-shirt')) {
-        botResponse = {
-            content: "Based on your measurements, here's my recommendation for a t-shirt:",
-            type: 'bot',
-            timestamp: new Date()
-        };
-        
-        // Hide typing indicator and add the initial response
-        hideTypingIndicator();
-        addMessage(botResponse);
-        
-        // Show typing again for a recommendation
-        showTypingIndicator();
-        
-        // Add product recommendation after a short delay
-        setTimeout(() => {
-            hideTypingIndicator();
-            
-            addMessage({
-                type: 'recommendation',
-                recommendation: {
-                    item: "Premium Cotton T-Shirt",
-                    brand: "ComfortWear",
-                    recommendedSize: "Medium",
-                    confidence: "medium"
-                },
-                timestamp: new Date()
-            });
-        }, 1000);
-        
-        return;
+    // Keywords matching
+    const keywords = {
+        jeans: ['jeans', 'pants', 'denim', 'trousers'],
+        shirts: ['shirt', 't-shirt', 'tee', 'top', 'blouse'],
+        dresses: ['dress', 'gown', 'frock']
+    };
+
+    let itemType = null;
+    for (const [type, words] of Object.entries(keywords)) {
+        if (words.some(word => lowerContent.includes(word))) {
+            itemType = type;
+            break;
+        }
     }
-    
-    // Default response
+
+    if (itemType) {
+        const recommendation = getSizeRecommendation(itemType, state.profileData);
+        if (recommendation) {
+            // Initial response
+            hideTypingIndicator();
+            addMessage({
+                content: `I've analyzed your measurements and found some great ${itemType} options for you.`,
+                type: 'bot',
+                timestamp: new Date()
+            });
+
+            // Show typing for recommendation
+            showTypingIndicator();
+            
+            setTimeout(() => {
+                hideTypingIndicator();
+                // Product recommendation
+                addMessage({
+                    type: 'recommendation',
+                    recommendation: {
+                        item: `${recommendation.brand.name} ${capitalize(itemType)}`,
+                        brand: recommendation.brand.name,
+                        recommendedSize: recommendation.size,
+                        confidence: recommendation.confidence
+                    },
+                    timestamp: new Date()
+                });
+
+                // Follow-up message
+                setTimeout(() => {
+                    addMessage({
+                        content: "Would you like to see more options or get recommendations for other items?",
+                        type: 'bot',
+                        timestamp: new Date()
+                    });
+                }, 1000);
+            }, 1000);
+            return;
+        }
+    }
+
+    // Handle general inquiries
+    if (lowerContent.includes('help') || lowerContent.includes('how')) {
+        response = {
+            content: "I can help you find the perfect size for clothing items. Just tell me what you're looking for - jeans, shirts, dresses, or other items. I'll use your profile measurements to give you personalized recommendations.",
+            type: 'bot',
+            timestamp: new Date()
+        };
+    } else if (lowerContent.includes('size') || lowerContent.includes('measurement')) {
+        response = {
+            content: "I see you're asking about sizes. To give you the most accurate recommendation, make sure your profile measurements are up to date. What specific item would you like a size recommendation for?",
+            type: 'bot',
+            timestamp: new Date()
+        };
+    } else if (lowerContent.includes('brand') || lowerContent.includes('recommend')) {
+        response = {
+            content: "I can recommend sizes across various brands. Just let me know what type of clothing you're interested in, and I'll suggest the best options based on your measurements.",
+            type: 'bot',
+            timestamp: new Date()
+        };
+    } else {
+        response = {
+            content: "I'm here to help you find the perfect fit! You can ask me about specific clothing items like jeans, shirts, or dresses, and I'll provide personalized size recommendations based on your measurements.",
+            type: 'bot',
+            timestamp: new Date()
+        };
+    }
+
     hideTypingIndicator();
-    addMessage(botResponse);
+    addMessage(response);
+}
+
+function getSizeRecommendation(item, userProfile) {
+    const recommendations = {
+        jeans: () => {
+            const waistSize = parseInt(userProfile.waist) || 32;
+            const inseamSize = parseInt(userProfile.inseam) || 30;
+            return {
+                size: `${waistSize}W x ${inseamSize}L`,
+                confidence: waistSize && inseamSize ? 'high' : 'medium',
+                brand: clothingDatabase.jeans.brands[Math.floor(Math.random() * clothingDatabase.jeans.brands.length)]
+            };
+        },
+        shirts: () => {
+            const chest = parseInt(userProfile.chest);
+            let size = 'M';
+            if (chest) {
+                if (chest < 90) size = 'S';
+                else if (chest > 105) size = 'L';
+            }
+            return {
+                size: size,
+                confidence: chest ? 'high' : 'medium',
+                brand: clothingDatabase.shirts.brands[Math.floor(Math.random() * clothingDatabase.shirts.brands.length)]
+            };
+        },
+        dresses: () => {
+            const waist = parseInt(userProfile.waist);
+            let size = 'M';
+            if (waist) {
+                if (waist < 70) size = 'S';
+                else if (waist > 85) size = 'L';
+            }
+            return {
+                size: size,
+                confidence: waist ? 'high' : 'medium',
+                brand: clothingDatabase.dresses.brands[Math.floor(Math.random() * clothingDatabase.dresses.brands.length)]
+            };
+        }
+    };
+
+    return recommendations[item] ? recommendations[item]() : null;
 }
 
 function renderMessages() {
