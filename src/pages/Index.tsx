@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import WelcomeHero from "@/components/WelcomeHero";
-import ProfileForm from "@/components/ProfileForm";
+import ProfileFormWrapper from "@/components/ProfileFormWrapper";
 import ChatContainer from "@/components/ChatContainer";
 
 enum AppState {
@@ -26,7 +26,7 @@ const Index = () => {
       case AppState.WELCOME:
         return <WelcomeHero onGetStarted={handleGetStarted} />;
       case AppState.PROFILE:
-        return <ProfileForm onComplete={handleProfileComplete} />;
+        return <ProfileFormWrapper onComplete={handleProfileComplete} />;
       case AppState.CHAT:
         return <ChatContainer />;
       default:

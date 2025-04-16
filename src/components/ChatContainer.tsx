@@ -4,6 +4,9 @@ import ChatHeader from "./ChatHeader";
 import ChatMessage, { ChatMessageProps } from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import { Separator } from "@/components/ui/separator";
+import { useProfile } from "@/contexts/ProfileContext";
+import { initializeGemini, generateResponse, createPromptWithContext } from "@/services/geminiService";
+import { getSizeRecommendation, clothingDatabase, capitalize } from "@/utils/sizeRecommendation";
 
 const initialMessages: ChatMessageProps[] = [
   {
@@ -16,7 +19,9 @@ const initialMessages: ChatMessageProps[] = [
 const ChatContainer = () => {
   const [messages, setMessages] = useState<ChatMessageProps[]>(initialMessages);
   const [isTyping, setIsTyping] = useState(false);
+  const [isGeminiReady, setIsGeminiReady] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { profileData } = useProfile();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -26,7 +31,32 @@ const ChatContainer = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (content: string) => {
+  // Initialize Gemini API on component mount
+  useEffect(() => {
+    const setup = async () => {
+      try {
+        const success = await initializeGemini();
+        setIsGeminiReady(success);
+        if (!success) {
+          setMessages(prev => [
+            ...prev, 
+            {
+              content: "I'm having trouble connecting to my AI brain. I'll still try to help you with basic recommendations.",
+              type: "bot",
+              timestamp: new Date()
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error("Gemini initialization error:", error);
+        setIsGeminiReady(false);
+      }
+    };
+    
+    setup();
+  }, []);
+
+  const handleSendMessage = async (content: string) => {
     // Add user message
     const userMessage: ChatMessageProps = {
       content,
@@ -37,71 +67,108 @@ const ChatContainer = () => {
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setIsTyping(true);
 
-    // Simulate bot thinking and responding
-    setTimeout(() => {
-      let botResponse: ChatMessageProps;
-      
-      // Simple response logic based on user input
-      if (content.toLowerCase().includes("jeans") || content.toLowerCase().includes("pants")) {
-        botResponse = {
-          content: "I've analyzed your profile and found a great recommendation for jeans.",
+    try {
+      // Check for clothing items in the message
+      const lowerContent = content.toLowerCase();
+      const itemTypes = ['jeans', 'shirts', 'dresses'];
+      const matchingItem = itemTypes.find(item => lowerContent.includes(item));
+
+      // Generate response using Gemini API
+      if (isGeminiReady) {
+        const prompt = createPromptWithContext(content, profileData, clothingDatabase);
+        const responseText = await generateResponse(prompt, profileData);
+        
+        // Add the AI response
+        const botResponse: ChatMessageProps = {
+          content: responseText,
           type: "bot",
           timestamp: new Date(),
         };
         
-        setMessages((prevMessages) => [...prevMessages, botResponse]);
+        setMessages(prev => [...prev, botResponse]);
         
-        // Add product recommendation after a short delay
-        setTimeout(() => {
-          const recommendation: ChatMessageProps = {
-            content: "",
-            type: "recommendation",
-            recommendation: {
-              item: "Classic Straight Jeans",
-              brand: "TrendyFit",
-              recommendedSize: "32W x 30L",
-              confidence: "high",
-            },
-            timestamp: new Date(),
-          };
-          setMessages((prevMessages) => [...prevMessages, recommendation]);
+        // If matched a clothing item, also add a recommendation card
+        if (matchingItem) {
+          setTimeout(() => {
+            const recommendation = getSizeRecommendation(matchingItem, profileData);
+            if (recommendation) {
+              const recommendationMessage: ChatMessageProps = {
+                content: "",
+                type: "recommendation",
+                recommendation: {
+                  item: `${recommendation.brand.name} ${capitalize(matchingItem)}`,
+                  brand: recommendation.brand.name,
+                  recommendedSize: recommendation.size,
+                  confidence: recommendation.confidence,
+                },
+                timestamp: new Date(),
+              };
+              setMessages(prev => [...prev, recommendationMessage]);
+            }
+            setIsTyping(false);
+          }, 1000);
+        } else {
           setIsTyping(false);
-        }, 1000);
-      } else if (content.toLowerCase().includes("shirt") || content.toLowerCase().includes("t-shirt")) {
-        botResponse = {
-          content: "Based on your measurements, here's my recommendation for a t-shirt:",
-          type: "bot",
-          timestamp: new Date(),
-        };
-        
-        setMessages((prevMessages) => [...prevMessages, botResponse]);
-        
-        // Add product recommendation after a short delay
-        setTimeout(() => {
-          const recommendation: ChatMessageProps = {
-            content: "",
-            type: "recommendation",
-            recommendation: {
-              item: "Premium Cotton T-Shirt",
-              brand: "ComfortWear",
-              recommendedSize: "Medium",
-              confidence: "medium",
-            },
-            timestamp: new Date(),
-          };
-          setMessages((prevMessages) => [...prevMessages, recommendation]);
-          setIsTyping(false);
-        }, 1000);
+        }
       } else {
-        botResponse = {
-          content: "I can help you find the right size for any clothing item. Just tell me what specific item you're looking for, like 'jeans from Levi's' or 'Nike running shoes', and I'll provide a personalized size recommendation based on your profile.",
-          type: "bot",
-          timestamp: new Date(),
-        };
-        setMessages((prevMessages) => [...prevMessages, botResponse]);
-        setIsTyping(false);
+        // Fallback to simple responses if Gemini is not available
+        handleFallbackResponse(content, matchingItem);
       }
-    }, 1500);
+    } catch (error) {
+      console.error("Error processing message:", error);
+      // Handle error with a friendly message
+      setMessages(prev => [
+        ...prev, 
+        {
+          content: "I apologize, but I encountered an error processing your request. Please try again.",
+          type: "bot",
+          timestamp: new Date()
+        }
+      ]);
+      setIsTyping(false);
+    }
+  };
+
+  const handleFallbackResponse = (content: string, matchingItem: string | undefined) => {
+    let botResponse: ChatMessageProps;
+    
+    if (matchingItem) {
+      botResponse = {
+        content: `I can help with ${matchingItem}! Based on your measurements, here's what I recommend:`,
+        type: "bot",
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, botResponse]);
+      
+      // Add product recommendation
+      setTimeout(() => {
+        const recommendation = getSizeRecommendation(matchingItem, profileData);
+        if (recommendation) {
+          const recommendationMessage: ChatMessageProps = {
+            content: "",
+            type: "recommendation",
+            recommendation: {
+              item: `${recommendation.brand.name} ${capitalize(matchingItem)}`,
+              brand: recommendation.brand.name,
+              recommendedSize: recommendation.size,
+              confidence: recommendation.confidence,
+            },
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, recommendationMessage]);
+        }
+        setIsTyping(false);
+      }, 1000);
+    } else {
+      botResponse = {
+        content: "I can help you find the right size for any clothing item. Just tell me what specific item you're looking for, like 'jeans', 'shirts', or 'dresses', and I'll provide a personalized recommendation based on your profile.",
+        type: "bot",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, botResponse]);
+      setIsTyping(false);
+    }
   };
 
   return (
