@@ -62,6 +62,58 @@ const clothingDatabase = {
     }
 };
 
+// Gemini configuration
+let geminiApi = {
+    key: '',
+    isConfigured: false
+};
+
+// Add API key input to chat screen
+const apiKeyInput = document.createElement('input');
+apiKeyInput.type = 'password';
+apiKeyInput.placeholder = 'Enter your Gemini API key';
+apiKeyInput.className = 'api-key-input';
+apiKeyInput.style.marginBottom = '10px';
+
+const configureApiButton = document.createElement('button');
+configureApiButton.textContent = 'Configure Gemini API';
+configureApiButton.className = 'configure-api-btn';
+configureApiButton.style.marginBottom = '20px';
+
+// Initialize Gemini
+async function initializeGemini(apiKey) {
+    try {
+        const { GoogleGenerativeAI } = await import('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        
+        geminiApi.model = model;
+        geminiApi.isConfigured = true;
+        geminiApi.key = apiKey;
+        
+        // Save API key to localStorage
+        localStorage.setItem('gemini_api_key', apiKey);
+        
+        // Hide configuration UI
+        apiKeyInput.style.display = 'none';
+        configureApiButton.style.display = 'none';
+        
+        // Show success message
+        addMessage({
+            content: "Gemini API configured successfully! You can now chat with an enhanced AI assistant.",
+            type: 'bot',
+            timestamp: new Date()
+        });
+    } catch (error) {
+        console.error('Error initializing Gemini:', error);
+        addMessage({
+            content: "Failed to initialize Gemini API. Please check your API key and try again.",
+            type: 'bot',
+            timestamp: new Date()
+        });
+    }
+}
+
 // Initialize the application
 function init() {
     // Add event listeners
@@ -74,6 +126,28 @@ function init() {
     
     chatForm.addEventListener('submit', handleMessageSubmit);
     messageInput.addEventListener('input', validateMessageInput);
+    
+    // Add API configuration UI to chat screen
+    const chatScreen = screens.chat;
+    chatScreen.insertBefore(apiKeyInput, chatScreen.firstChild);
+    chatScreen.insertBefore(configureApiButton, apiKeyInput.nextSibling);
+    
+    // Add event listener for API configuration
+    configureApiButton.addEventListener('click', () => {
+        const apiKey = apiKeyInput.value.trim();
+        if (apiKey) {
+            initializeGemini(apiKey);
+        } else {
+            alert('Please enter a valid API key');
+        }
+    });
+    
+    // Check for saved API key
+    const savedApiKey = localStorage.getItem('gemini_api_key');
+    if (savedApiKey) {
+        apiKeyInput.value = savedApiKey;
+        initializeGemini(savedApiKey);
+    }
     
     // Set initial active screen
     navigateToScreen(state.currentScreen);
@@ -184,6 +258,86 @@ function handleMessageSubmit(e) {
     }, 1500);
 }
 
+async function processUserMessage(content) {
+    if (!geminiApi.isConfigured) {
+        addMessage({
+            content: "Please configure the Gemini API first by entering your API key above.",
+            type: 'bot',
+            timestamp: new Date()
+        });
+        return;
+    }
+
+    try {
+        // First, generate context about clothing and measurements
+        const prompt = `
+            As a fashion AI assistant, help recommend clothing sizes based on this context:
+            User Profile: ${JSON.stringify(state.profileData)}
+            User Message: ${content}
+            Available Clothing Database: ${JSON.stringify(clothingDatabase)}
+            
+            Provide specific size recommendations if the user is asking about clothing items.
+        `;
+
+        const result = await geminiApi.model.generateContent(prompt);
+        const response = await result.response;
+        const responseText = response.text();
+
+        // Process the Gemini response
+        hideTypingIndicator();
+        
+        // Parse the response to identify if it's about specific clothing items
+        const lowerContent = content.toLowerCase();
+        const itemTypes = ['jeans', 'shirts', 'dresses'];
+        const matchingItem = itemTypes.find(item => 
+            lowerContent.includes(item) || responseText.toLowerCase().includes(item)
+        );
+
+        if (matchingItem) {
+            // If it's about specific clothing, show the recommendation card
+            const recommendation = getSizeRecommendation(matchingItem, state.profileData);
+            
+            // Add the Gemini's response first
+            addMessage({
+                content: responseText,
+                type: 'bot',
+                timestamp: new Date()
+            });
+
+            // Then show the recommendation card
+            if (recommendation) {
+                setTimeout(() => {
+                    addMessage({
+                        type: 'recommendation',
+                        recommendation: {
+                            item: `${recommendation.brand.name} ${capitalize(matchingItem)}`,
+                            brand: recommendation.brand.name,
+                            recommendedSize: recommendation.size,
+                            confidence: recommendation.confidence
+                        },
+                        timestamp: new Date()
+                    });
+                }, 1000);
+            }
+        } else {
+            // For general queries, just show the Gemini response
+            addMessage({
+                content: responseText,
+                type: 'bot',
+                timestamp: new Date()
+            });
+        }
+    } catch (error) {
+        console.error('Error processing message with Gemini:', error);
+        hideTypingIndicator();
+        addMessage({
+            content: "I apologize, but I encountered an error processing your request. Please try again.",
+            type: 'bot',
+            timestamp: new Date()
+        });
+    }
+}
+
 function addMessage(message) {
     state.messages.push(message);
     renderMessages();
@@ -209,97 +363,6 @@ function hideTypingIndicator() {
     if (indicator) {
         indicator.remove();
     }
-}
-
-function processUserMessage(content) {
-    const lowerContent = content.toLowerCase();
-    let response = null;
-    
-    // Keywords matching
-    const keywords = {
-        jeans: ['jeans', 'pants', 'denim', 'trousers'],
-        shirts: ['shirt', 't-shirt', 'tee', 'top', 'blouse'],
-        dresses: ['dress', 'gown', 'frock']
-    };
-
-    let itemType = null;
-    for (const [type, words] of Object.entries(keywords)) {
-        if (words.some(word => lowerContent.includes(word))) {
-            itemType = type;
-            break;
-        }
-    }
-
-    if (itemType) {
-        const recommendation = getSizeRecommendation(itemType, state.profileData);
-        if (recommendation) {
-            // Initial response
-            hideTypingIndicator();
-            addMessage({
-                content: `I've analyzed your measurements and found some great ${itemType} options for you.`,
-                type: 'bot',
-                timestamp: new Date()
-            });
-
-            // Show typing for recommendation
-            showTypingIndicator();
-            
-            setTimeout(() => {
-                hideTypingIndicator();
-                // Product recommendation
-                addMessage({
-                    type: 'recommendation',
-                    recommendation: {
-                        item: `${recommendation.brand.name} ${capitalize(itemType)}`,
-                        brand: recommendation.brand.name,
-                        recommendedSize: recommendation.size,
-                        confidence: recommendation.confidence
-                    },
-                    timestamp: new Date()
-                });
-
-                // Follow-up message
-                setTimeout(() => {
-                    addMessage({
-                        content: "Would you like to see more options or get recommendations for other items?",
-                        type: 'bot',
-                        timestamp: new Date()
-                    });
-                }, 1000);
-            }, 1000);
-            return;
-        }
-    }
-
-    // Handle general inquiries
-    if (lowerContent.includes('help') || lowerContent.includes('how')) {
-        response = {
-            content: "I can help you find the perfect size for clothing items. Just tell me what you're looking for - jeans, shirts, dresses, or other items. I'll use your profile measurements to give you personalized recommendations.",
-            type: 'bot',
-            timestamp: new Date()
-        };
-    } else if (lowerContent.includes('size') || lowerContent.includes('measurement')) {
-        response = {
-            content: "I see you're asking about sizes. To give you the most accurate recommendation, make sure your profile measurements are up to date. What specific item would you like a size recommendation for?",
-            type: 'bot',
-            timestamp: new Date()
-        };
-    } else if (lowerContent.includes('brand') || lowerContent.includes('recommend')) {
-        response = {
-            content: "I can recommend sizes across various brands. Just let me know what type of clothing you're interested in, and I'll suggest the best options based on your measurements.",
-            type: 'bot',
-            timestamp: new Date()
-        };
-    } else {
-        response = {
-            content: "I'm here to help you find the perfect fit! You can ask me about specific clothing items like jeans, shirts, or dresses, and I'll provide personalized size recommendations based on your measurements.",
-            type: 'bot',
-            timestamp: new Date()
-        };
-    }
-
-    hideTypingIndicator();
-    addMessage(response);
 }
 
 function getSizeRecommendation(item, userProfile) {
