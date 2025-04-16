@@ -68,6 +68,9 @@ let geminiApi = {
     isConfigured: false
 };
 
+// Configure Gemini API on load
+const GEMINI_API_KEY = 'AIzaSyAzsNUl-hTJhM9VVJuegfBJf2boNtMAZXM';
+
 // Add API key input to chat screen
 const apiKeyInput = document.createElement('input');
 apiKeyInput.type = 'password';
@@ -81,33 +84,31 @@ configureApiButton.className = 'configure-api-btn';
 configureApiButton.style.marginBottom = '20px';
 
 // Initialize Gemini
-async function initializeGemini(apiKey) {
+async function initializeGemini() {
     try {
-        const { GoogleGenerativeAI } = await import('@google/generative-ai');
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-pro" });
         
         geminiApi.model = model;
         geminiApi.isConfigured = true;
-        geminiApi.key = apiKey;
         
-        // Save API key to localStorage
-        localStorage.setItem('gemini_api_key', apiKey);
+        // Hide configuration UI since we have the API key
+        if (apiKeyInput && configureApiButton) {
+            apiKeyInput.style.display = 'none';
+            configureApiButton.style.display = 'none';
+        }
         
-        // Hide configuration UI
-        apiKeyInput.style.display = 'none';
-        configureApiButton.style.display = 'none';
-        
-        // Show success message
+        // Show success message in chat
         addMessage({
-            content: "Gemini API configured successfully! You can now chat with an enhanced AI assistant.",
+            content: "AI Assistant is ready to help you with sizing recommendations!",
             type: 'bot',
             timestamp: new Date()
         });
     } catch (error) {
         console.error('Error initializing Gemini:', error);
         addMessage({
-            content: "Failed to initialize Gemini API. Please check your API key and try again.",
+            content: "There was an error connecting to the AI assistant. Please try again later.",
             type: 'bot',
             timestamp: new Date()
         });
@@ -148,6 +149,9 @@ function init() {
         apiKeyInput.value = savedApiKey;
         initializeGemini(savedApiKey);
     }
+    
+    // Initialize Gemini immediately
+    initializeGemini();
     
     // Set initial active screen
     navigateToScreen(state.currentScreen);
@@ -261,7 +265,7 @@ function handleMessageSubmit(e) {
 async function processUserMessage(content) {
     if (!geminiApi.isConfigured) {
         addMessage({
-            content: "Please configure the Gemini API first by entering your API key above.",
+            content: "The AI assistant is still initializing. Please try again in a moment.",
             type: 'bot',
             timestamp: new Date()
         });
@@ -269,7 +273,7 @@ async function processUserMessage(content) {
     }
 
     try {
-        // First, generate context about clothing and measurements
+        // Create context about clothing and measurements
         const prompt = `
             As a fashion AI assistant, help recommend clothing sizes based on this context:
             User Profile: ${JSON.stringify(state.profileData)}
@@ -277,16 +281,16 @@ async function processUserMessage(content) {
             Available Clothing Database: ${JSON.stringify(clothingDatabase)}
             
             Provide specific size recommendations if the user is asking about clothing items.
+            Keep responses friendly and conversational.
         `;
 
         const result = await geminiApi.model.generateContent(prompt);
         const response = await result.response;
         const responseText = response.text();
-
-        // Process the Gemini response
+        
         hideTypingIndicator();
         
-        // Parse the response to identify if it's about specific clothing items
+        // Parse the response for clothing items
         const lowerContent = content.toLowerCase();
         const itemTypes = ['jeans', 'shirts', 'dresses'];
         const matchingItem = itemTypes.find(item => 
@@ -294,9 +298,6 @@ async function processUserMessage(content) {
         );
 
         if (matchingItem) {
-            // If it's about specific clothing, show the recommendation card
-            const recommendation = getSizeRecommendation(matchingItem, state.profileData);
-            
             // Add the Gemini's response first
             addMessage({
                 content: responseText,
@@ -304,7 +305,8 @@ async function processUserMessage(content) {
                 timestamp: new Date()
             });
 
-            // Then show the recommendation card
+            // Then show recommendation if applicable
+            const recommendation = getSizeRecommendation(matchingItem, state.profileData);
             if (recommendation) {
                 setTimeout(() => {
                     addMessage({
@@ -320,7 +322,6 @@ async function processUserMessage(content) {
                 }, 1000);
             }
         } else {
-            // For general queries, just show the Gemini response
             addMessage({
                 content: responseText,
                 type: 'bot',
