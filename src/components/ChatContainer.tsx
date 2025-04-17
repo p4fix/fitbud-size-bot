@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useProfile } from "@/contexts/ProfileContext";
 import { initializeGemini, generateResponse, createPromptWithContext } from "@/services/geminiService";
 import { getSizeRecommendation, clothingDatabase, capitalize } from "@/utils/sizeRecommendation";
+import { useToast } from "@/hooks/use-toast";
 
 const initialMessages: ChatMessageProps[] = [
   {
@@ -16,12 +17,17 @@ const initialMessages: ChatMessageProps[] = [
   },
 ];
 
-const ChatContainer = () => {
+interface ChatContainerProps {
+  onUpdateProfile?: () => void;
+}
+
+const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
   const [messages, setMessages] = useState<ChatMessageProps[]>(initialMessages);
   const [isTyping, setIsTyping] = useState(false);
   const [isGeminiReady, setIsGeminiReady] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { profileData } = useProfile();
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,15 +52,27 @@ const ChatContainer = () => {
               timestamp: new Date()
             }
           ]);
+          toast({
+            title: "Connection Issue",
+            description: "Unable to connect to the AI service. Using fallback recommendations.",
+            variant: "destructive"
+          });
+        } else {
+          console.log("Gemini API initialized successfully");
         }
       } catch (error) {
         console.error("Gemini initialization error:", error);
         setIsGeminiReady(false);
+        toast({
+          title: "Connection Error",
+          description: "Failed to initialize the AI service. Using fallback recommendations.",
+          variant: "destructive"
+        });
       }
     };
     
     setup();
-  }, []);
+  }, [toast]);
 
   const handleSendMessage = async (content: string) => {
     // Add user message
@@ -75,6 +93,7 @@ const ChatContainer = () => {
 
       // Generate response using Gemini API
       if (isGeminiReady) {
+        console.log("Using Gemini API for response");
         const prompt = createPromptWithContext(content, profileData, clothingDatabase);
         const responseText = await generateResponse(prompt, profileData);
         
@@ -111,6 +130,7 @@ const ChatContainer = () => {
           setIsTyping(false);
         }
       } else {
+        console.log("Using fallback response system");
         // Fallback to simple responses if Gemini is not available
         handleFallbackResponse(content, matchingItem);
       }
@@ -125,6 +145,11 @@ const ChatContainer = () => {
           timestamp: new Date()
         }
       ]);
+      toast({
+        title: "Error",
+        description: "There was a problem processing your message. Please try again.",
+        variant: "destructive"
+      });
       setIsTyping(false);
     }
   };
@@ -173,7 +198,7 @@ const ChatContainer = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] max-w-2xl mx-auto bg-fitbud-light rounded-lg overflow-hidden shadow-lg border">
-      <ChatHeader />
+      <ChatHeader onUpdateProfile={onUpdateProfile} />
       
       <div className="flex-grow overflow-y-auto p-4 bg-gray-50">
         {messages.map((message, index) => (

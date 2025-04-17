@@ -1,8 +1,13 @@
 
 import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
-const ChatHeader = () => {
+interface ChatHeaderProps {
+  onUpdateProfile?: () => void;
+}
+
+const ChatHeader = ({ onUpdateProfile }: ChatHeaderProps) => {
   return (
     <header className="flex items-center justify-between p-4 border-b bg-white shadow-sm z-10">
       <div className="flex items-center gap-2">
@@ -19,9 +24,16 @@ const ChatHeader = () => {
           <p className="text-xs text-gray-500">SmartSize Advisor</p>
         </div>
       </div>
-      <button className="text-sm text-fitbud-primary hover:text-fitbud-secondary transition-colors">
-        Update Profile
-      </button>
+      {onUpdateProfile && (
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={onUpdateProfile}
+          className="text-sm text-fitbud-primary hover:text-fitbud-secondary hover:bg-fitbud-light/50 transition-colors"
+        >
+          Update Profile
+        </Button>
+      )}
     </header>
   );
 };
