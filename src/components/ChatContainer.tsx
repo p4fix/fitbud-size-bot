@@ -8,6 +8,8 @@ import { useProfile } from "@/contexts/ProfileContext";
 import { initializeGemini, generateResponse, createPromptWithContext } from "@/services/geminiService";
 import { getSizeRecommendation, clothingDatabase, capitalize } from "@/utils/sizeRecommendation";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 const initialMessages: ChatMessageProps[] = [
   {
@@ -25,6 +27,7 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
   const [messages, setMessages] = useState<ChatMessageProps[]>(initialMessages);
   const [isTyping, setIsTyping] = useState(false);
   const [isGeminiReady, setIsGeminiReady] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { profileData } = useProfile();
   const { toast } = useToast();
@@ -44,28 +47,26 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
         const success = await initializeGemini();
         setIsGeminiReady(success);
         if (!success) {
+          setApiError("Unable to connect to AI service. Using basic recommendations instead.");
           setMessages(prev => [
             ...prev, 
             {
-              content: "I'm having trouble connecting to my AI brain. I'll still try to help you with basic recommendations.",
+              content: "I'm having trouble connecting to my AI brain. I'll still help you with basic recommendations based on your measurements.",
               type: "bot",
               timestamp: new Date()
             }
           ]);
-          toast({
-            title: "Connection Issue",
-            description: "Unable to connect to the AI service. Using fallback recommendations.",
-            variant: "destructive"
-          });
         } else {
           console.log("Gemini API initialized successfully");
+          setApiError(null);
         }
       } catch (error) {
         console.error("Gemini initialization error:", error);
         setIsGeminiReady(false);
+        setApiError("Failed to initialize AI service. Using basic recommendations instead.");
         toast({
           title: "Connection Error",
-          description: "Failed to initialize the AI service. Using fallback recommendations.",
+          description: "Failed to initialize the AI service. Using basic recommendations instead.",
           variant: "destructive"
         });
       }
@@ -91,47 +92,61 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
       const itemTypes = ['jeans', 'shirts', 'dresses'];
       const matchingItem = itemTypes.find(item => lowerContent.includes(item));
 
-      // Generate response using Gemini API
+      // Generate response
       if (isGeminiReady) {
         console.log("Using Gemini API for response");
-        const prompt = createPromptWithContext(content, profileData, clothingDatabase);
-        const responseText = await generateResponse(prompt, profileData);
-        
-        // Add the AI response
-        const botResponse: ChatMessageProps = {
-          content: responseText,
-          type: "bot",
-          timestamp: new Date(),
-        };
-        
-        setMessages(prev => [...prev, botResponse]);
-        
-        // If matched a clothing item, also add a recommendation card
-        if (matchingItem) {
-          setTimeout(() => {
-            const recommendation = getSizeRecommendation(matchingItem, profileData);
-            if (recommendation) {
-              const recommendationMessage: ChatMessageProps = {
-                content: "",
-                type: "recommendation",
-                recommendation: {
-                  item: `${recommendation.brand.name} ${capitalize(matchingItem)}`,
-                  brand: recommendation.brand.name,
-                  recommendedSize: recommendation.size,
-                  confidence: recommendation.confidence,
-                },
-                timestamp: new Date(),
-              };
-              setMessages(prev => [...prev, recommendationMessage]);
-            }
+        try {
+          const prompt = createPromptWithContext(content, profileData, clothingDatabase);
+          const responseText = await generateResponse(prompt, profileData);
+          
+          // Add the AI response
+          const botResponse: ChatMessageProps = {
+            content: responseText,
+            type: "bot",
+            timestamp: new Date(),
+          };
+          
+          setMessages(prev => [...prev, botResponse]);
+          
+          // If matched a clothing item, also add a recommendation card
+          if (matchingItem) {
+            setTimeout(() => {
+              const recommendation = getSizeRecommendation(matchingItem, profileData);
+              if (recommendation) {
+                const recommendationMessage: ChatMessageProps = {
+                  content: "",
+                  type: "recommendation",
+                  recommendation: {
+                    item: `${recommendation.brand.name} ${capitalize(matchingItem)}`,
+                    brand: recommendation.brand.name,
+                    recommendedSize: recommendation.size,
+                    confidence: recommendation.confidence,
+                  },
+                  timestamp: new Date(),
+                };
+                setMessages(prev => [...prev, recommendationMessage]);
+              }
+              setIsTyping(false);
+            }, 1000);
+          } else {
             setIsTyping(false);
-          }, 1000);
-        } else {
-          setIsTyping(false);
+          }
+        } catch (error) {
+          console.error("Error with Gemini API:", error);
+          // Fall back to basic response if Gemini fails
+          handleFallbackResponse(content, matchingItem);
+          
+          // Set error state and show toast
+          setApiError("AI service temporarily unavailable. Using basic recommendations instead.");
+          toast({
+            title: "AI Service Error",
+            description: "Using basic responses while our AI service recovers.",
+            variant: "destructive"
+          });
         }
       } else {
         console.log("Using fallback response system");
-        // Fallback to simple responses if Gemini is not available
+        // Use fallback responses if Gemini is not available
         handleFallbackResponse(content, matchingItem);
       }
     } catch (error) {
@@ -140,16 +155,11 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
       setMessages(prev => [
         ...prev, 
         {
-          content: "I apologize, but I encountered an error processing your request. Please try again.",
+          content: "I apologize, but I encountered an error processing your request. Let me help you with basic size recommendations instead.",
           type: "bot",
           timestamp: new Date()
         }
       ]);
-      toast({
-        title: "Error",
-        description: "There was a problem processing your message. Please try again.",
-        variant: "destructive"
-      });
       setIsTyping(false);
     }
   };
@@ -199,6 +209,14 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] max-w-2xl mx-auto bg-fitbud-light rounded-lg overflow-hidden shadow-lg border">
       <ChatHeader onUpdateProfile={onUpdateProfile} />
+      
+      {apiError && (
+        <Alert variant="destructive" className="mx-4 mt-2">
+          <InfoIcon className="h-4 w-4" />
+          <AlertTitle>Connection Notice</AlertTitle>
+          <AlertDescription>{apiError}</AlertDescription>
+        </Alert>
+      )}
       
       <div className="flex-grow overflow-y-auto p-4 bg-gray-50">
         {messages.map((message, index) => (

@@ -15,7 +15,8 @@ export const initializeGemini = async () => {
     }
     
     const genAI = new GoogleGenerativeAI(API_KEY);
-    geminiModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+    // Use the updated model name
+    geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     // Test the model with a simple query to ensure it's working
     const result = await geminiModel.generateContent("Hello, are you working?");
