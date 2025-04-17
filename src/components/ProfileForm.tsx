@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 
 interface ProfileFormProps {
-  onComplete: () => void;
+  onComplete: (formData: any) => void;
 }
 
 const ProfileForm = ({ onComplete }: ProfileFormProps) => {
@@ -30,7 +29,7 @@ const ProfileForm = ({ onComplete }: ProfileFormProps) => {
     e.preventDefault();
     // Here you would typically save this data
     console.log("Saving profile data:", formData);
-    onComplete();
+    onComplete(formData);
   };
 
   return (
