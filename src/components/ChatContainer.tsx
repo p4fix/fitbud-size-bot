@@ -5,7 +5,7 @@ import ChatMessage, { ChatMessageProps } from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import { Separator } from "@/components/ui/separator";
 import { useProfile } from "@/contexts/ProfileContext";
-import { initializeGemini, generateResponse } from "@/services/geminiService";
+import { generateResponse } from "@/services/geminiService";
 import { getSizeRecommendation, clothingDatabase, capitalize } from "@/utils/sizeRecommendation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -38,12 +38,6 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
     scrollToBottom();
   }, [messages]);
 
-  // No need to initialize Gemini API anymore
-  useEffect(() => {
-    // Simplified setup that doesn't rely on the Gemini API
-    // Just using basic recommendations
-  }, []);
-
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
     
@@ -60,12 +54,12 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
     try {
       // Check for clothing items in the message
       const lowerContent = content.toLowerCase();
-      const itemTypes = ['jeans', 'shirts', 'dresses'];
+      const itemTypes = ['jeans', 'shirts', 'dresses', 'jacket', 'coat', 'shoes'];
       const matchingItem = itemTypes.find(item => lowerContent.includes(item));
-
-      // Use the simplified keyword approach directly
+      
+      // Add a small delay to simulate thinking
       setTimeout(async () => {
-        // Generate a simple response based on keywords
+        // Generate a response based on keywords
         const responseText = await generateResponse(content, profileData);
         
         // Add the response
@@ -79,8 +73,13 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
         
         // If matched a clothing item, also add a recommendation card
         if (matchingItem) {
+          // Normalize the matching item to fit our database categories
+          let categoryItem = matchingItem;
+          if (categoryItem === 'jacket' || categoryItem === 'coat') categoryItem = 'shirts';
+          if (categoryItem === 'shoes') categoryItem = 'jeans'; // Just use jeans recommendation logic as fallback
+          
           setTimeout(() => {
-            const recommendation = getSizeRecommendation(matchingItem, profileData);
+            const recommendation = getSizeRecommendation(categoryItem, profileData);
             if (recommendation) {
               const recommendationMessage: ChatMessageProps = {
                 content: "",
@@ -113,6 +112,12 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
         }
       ]);
       setIsTyping(false);
+      
+      toast({
+        title: "Connection Error",
+        description: "Using basic recommendations instead.",
+        variant: "destructive",
+      });
     }
   };
 

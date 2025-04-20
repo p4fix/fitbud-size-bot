@@ -1,6 +1,4 @@
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 // This is a simplified version that will focus on keyword matching
 // rather than complex AI interactions
 
@@ -22,8 +20,12 @@ export const generateResponse = async (prompt: string, userProfile: any) => {
     return "For shirts, your chest measurements suggest a medium size would be appropriate. Look for shirts with a regular fit based on your preferences.";
   } else if (lowerPrompt.includes('dress') || lowerPrompt.includes('dresses')) {
     return "When shopping for dresses, focus on your waist measurements for the best fit. Consider your height when choosing the length of the dress.";
+  } else if (lowerPrompt.includes('jacket') || lowerPrompt.includes('coat')) {
+    return "For jackets, your shoulder and chest measurements are most important. I recommend looking for a medium size based on your profile.";
+  } else if (lowerPrompt.includes('shoes') || lowerPrompt.includes('footwear')) {
+    return "Shoe sizing varies by brand. Based on your profile, I would recommend trying a standard width shoe in your usual size.";
   } else {
-    return "I can help you find the right fit for clothing items like jeans, shirts, or dresses. What specific item are you looking for today?";
+    return "I can help you find the right fit for clothing items like jeans, shirts, dresses, jackets, or shoes. What specific item are you looking for today?";
   }
 };
 
