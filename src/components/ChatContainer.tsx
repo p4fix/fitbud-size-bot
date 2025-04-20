@@ -44,9 +44,12 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
   useEffect(() => {
     const setup = async () => {
       try {
+        console.log("Setting up Gemini API");
         const success = await initializeGemini();
         setIsGeminiReady(success);
+        
         if (!success) {
+          console.log("Gemini initialization failed");
           setApiError("Unable to connect to AI service. Using basic recommendations instead.");
           setMessages(prev => [
             ...prev, 
@@ -72,10 +75,13 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
       }
     };
     
+    // Call the setup function
     setup();
   }, [toast]);
 
   const handleSendMessage = async (content: string) => {
+    if (!content.trim()) return;
+    
     // Add user message
     const userMessage: ChatMessageProps = {
       content,

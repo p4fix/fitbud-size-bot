@@ -43,7 +43,7 @@ export const generateResponse = async (prompt: string, userProfile: any) => {
   }
 
   try {
-    // Set up proper safety settings and generation config
+    // Use proper configuration for the Gemini API call
     const generationConfig = {
       temperature: 0.7,
       topK: 40,
@@ -51,6 +51,7 @@ export const generateResponse = async (prompt: string, userProfile: any) => {
       maxOutputTokens: 1024,
     };
 
+    // Call the API with proper structure
     const result = await geminiModel.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig,
@@ -67,18 +68,21 @@ export const generateResponse = async (prompt: string, userProfile: any) => {
 
 // Create a prompt with context for the Gemini API
 export const createPromptWithContext = (userMessage: string, profileData: any, clothingDatabase: any) => {
+  // Ensure profileData is defined before accessing properties
+  const profile = profileData || {};
+  
   return `
     You are FitBud, a fashion AI assistant. You help recommend clothing sizes based on user measurements.
     
     User Profile: 
-    Gender: ${profileData?.gender || 'Unknown'}
-    Height: ${profileData?.height || 'Unknown'}
-    Weight: ${profileData?.weight || 'Unknown'}
-    Waist: ${profileData?.waist || 'Unknown'}
-    Inseam: ${profileData?.inseam || 'Unknown'}
-    Chest: ${profileData?.chest || 'Unknown'}
-    Shoulders: ${profileData?.shoulders || 'Unknown'}
-    Preferred Fit: ${profileData?.preferredFit || 'Regular'}
+    Gender: ${profile.gender || 'Unknown'}
+    Height: ${profile.height || 'Unknown'}
+    Weight: ${profile.weight || 'Unknown'}
+    Waist: ${profile.waist || 'Unknown'}
+    Inseam: ${profile.inseam || 'Unknown'}
+    Chest: ${profile.chest || 'Unknown'}
+    Shoulders: ${profile.shoulders || 'Unknown'}
+    Preferred Fit: ${profile.preferredFit || 'Regular'}
     
     User Message: ${userMessage}
     
