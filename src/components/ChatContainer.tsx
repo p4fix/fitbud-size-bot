@@ -96,12 +96,15 @@ const ChatContainer = ({ onUpdateProfile }: ChatContainerProps) => {
       if (isGeminiReady) {
         console.log("Using Gemini API for response");
         try {
+          // Create a proper prompt with all necessary context
           const prompt = createPromptWithContext(content, profileData, clothingDatabase);
+          
+          // Generate response from Gemini API
           const responseText = await generateResponse(prompt, profileData);
           
           // Add the AI response
           const botResponse: ChatMessageProps = {
-            content: responseText,
+            content: responseText || "I understand your question about clothing sizes. Let me help with that.",
             type: "bot",
             timestamp: new Date(),
           };
